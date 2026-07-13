@@ -35,7 +35,26 @@ build/
 ### MacOS ###
 .DS_Store
 
-### ETC ###
+### Local environment / secrets ###
 .env
 .env.*
-/secrets
+*.env
+!*.env.example
+!*.env.sample
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+### Local runtime / tooling ###
+*.log
+logs/
+tmp/
+out/
+hs_err_pid*
+replay_pid*
+.mise.local.toml
+mise.local.toml
