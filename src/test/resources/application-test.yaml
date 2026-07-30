@@ -1,0 +1,16 @@
+eureka:
+  client:
+    # 테스트에서 실행 중인 Discovery Service에 연결하지 않음
+    enabled: false
+
+spring:
+  cloud:
+    discovery:
+      enabled: false
+
+auth:
+  jwt:
+    issuer: https://identity.omagotchi.local
+    audience: omagotchi-api
+    # TestJwtKeyConfig가 메모리에서 생성한 공개키 Bean을 제공
+    public-key-location: classpath:unused-test-key.pem

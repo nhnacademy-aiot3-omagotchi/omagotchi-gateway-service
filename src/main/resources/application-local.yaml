@@ -1,0 +1,9 @@
+spring:
+  config:
+    # .env.local을 Java properties 형식으로 읽고, 누락 시 기동 실패
+    import: "file:./.env.local[.properties]"
+
+eureka:
+  client:
+    # 로컬에서는 각 서비스의 고정 포트로 직접 연결
+    enabled: false
