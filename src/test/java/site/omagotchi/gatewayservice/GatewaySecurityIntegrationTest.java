@@ -12,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -109,7 +108,6 @@ class GatewaySecurityIntegrationTest {
         response
                 .expectStatus().isUnauthorized()
                 .expectBody()
-                .jsonPath("$.status").isEqualTo(HttpStatus.UNAUTHORIZED.value())
                 .jsonPath("$.code").isEqualTo("AUTH_AUTHENTICATION_REQUIRED");
     }
 

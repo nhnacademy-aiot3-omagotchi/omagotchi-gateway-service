@@ -72,7 +72,6 @@ public class SecurityErrorResponseHandler implements ServerAuthenticationEntryPo
                         : getStatusCode().value();
                 return write(
                         this,
-                        status,
                         errorCodeResolver.apply(status),
                         exchange.getRequest().getPath().value()
                 );
@@ -83,15 +82,14 @@ public class SecurityErrorResponseHandler implements ServerAuthenticationEntryPo
 
     private Mono<Void> write(
             ServerHttpResponse response,
-            int status,
             ErrorCode errorCode,
             String path
     ) {
         ApiErrorResponse body = new ApiErrorResponse(
-                status,
                 errorCode.code(),
                 errorCode.message(),
-                path
+                path,
+                null
         );
 
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
