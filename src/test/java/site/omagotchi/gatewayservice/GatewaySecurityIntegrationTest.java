@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -27,7 +28,7 @@ import java.time.Duration;
  *
  * - 요청 흐름: WebTestClient -> Gateway -> 테스트용 downstream 서버
  * - downstream이 받은 Header를 X-Received-* 응답 Header로 반환
- * - Bearer Token 전달과 외부 사용자 식별 Header 제거 확인
+ * - Bearer Token 전달과 외부 식별 Header·요청 Cookie·응답 Set-Cookie 제거 확인
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -39,6 +40,7 @@ class GatewaySecurityIntegrationTest {
     private static final String RECEIVED_USER_ID_HEADER = "X-Received-User-Id";
     private static final String RECEIVED_GLOBAL_ROLE_HEADER = "X-Received-Global-Role";
     private static final String RECEIVED_AUTHORIZATION_HEADER = "X-Received-Authorization";
+    private static final String RECEIVED_COOKIE_HEADER = "X-Received-Cookie";
 
     // 테스트 클래스 전체에서 서버 하나를 공유하고 종료 시 직접 정리
     private static final DisposableServer DOWNSTREAM = startDownstream();
@@ -55,7 +57,7 @@ class GatewaySecurityIntegrationTest {
      */
     @DynamicPropertySource
     static void downstreamRoutes(DynamicPropertyRegistry registry) {
-        String downstreamUri = "http://localhost:" + DOWNSTREAM.port();
+        String downstreamUri = "http://127.0.0.1:" + DOWNSTREAM.port();
         registry.add("IDENTITY_SERVICE_URI", () -> downstreamUri);
         registry.add("LEARNING_SERVICE_URI", () -> downstreamUri);
         registry.add("RULE_SERVICE_URI", () -> downstreamUri);
@@ -66,7 +68,7 @@ class GatewaySecurityIntegrationTest {
         // Mock WebFlux Context가 아니라 실제 Gateway 포트로 HTTP 요청
         webTestClient = WebTestClient.bindToServer()
                 .responseTimeout(Duration.ofSeconds(5))
-                .baseUrl("http://localhost:" + port)
+                .baseUrl("http://127.0.0.1:" + port)
                 .build();
     }
 
@@ -77,10 +79,6 @@ class GatewaySecurityIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({
-            "POST, /api/v1/auth/signup",
-            "POST, /api/v1/auth/login",
-            "POST, /api/v1/auth/refresh",
-            "POST, /api/v1/auth/logout",
             "POST, /api/telegram/webhook",
             "GET, /api/rules/ping"
     })
@@ -94,6 +92,23 @@ class GatewaySecurityIntegrationTest {
 
         // Then
         response.expectStatus().isOk();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"signup", "login", "refresh", "logout"})
+    @DisplayName("Identity 인증 API는 Gateway에서 라우팅하지 않음")
+    void doesNotRouteIdentityAuthApi(String operation) {
+        // Given
+        String token = TestJwtKeyConfig.issue();
+
+        // When
+        WebTestClient.ResponseSpec response = webTestClient.post()
+                .uri("/api/v1/auth/" + operation)
+                .headers(headers -> headers.setBearerAuth(token))
+                .exchange();
+
+        // Then
+        response.expectStatus().isNotFound();
     }
 
     @Test
@@ -120,11 +135,12 @@ class GatewaySecurityIntegrationTest {
         // When
         // 외부 클라이언트가 사용자 식별 Header를 위조한 요청
         WebTestClient.ResponseSpec response = webTestClient.get()
-                .uri("/api/cohorts")
+                .uri("/api/v1/users/me")
                 .headers(headers -> {
                     headers.setBearerAuth(token);
                     headers.set("X-User-Id", "spoofed-user");
                     headers.set("X-Global-Role", "SYSTEM_ADMIN");
+                    headers.set(HttpHeaders.COOKIE, "OMAGOTCHI_SESSION=session-secret");
                 })
                 .exchange();
 
@@ -137,7 +153,9 @@ class GatewaySecurityIntegrationTest {
                         "Bearer " + token
                 )
                 .expectHeader().valueEquals(RECEIVED_USER_ID_HEADER, "absent")
-                .expectHeader().valueEquals(RECEIVED_GLOBAL_ROLE_HEADER, "absent");
+                .expectHeader().valueEquals(RECEIVED_GLOBAL_ROLE_HEADER, "absent")
+                .expectHeader().valueEquals(RECEIVED_COOKIE_HEADER, "absent")
+                .expectHeader().doesNotExist(HttpHeaders.SET_COOKIE);
     }
 
     @Test
@@ -189,6 +207,7 @@ class GatewaySecurityIntegrationTest {
                     String globalRole = request.requestHeaders().get("X-Global-Role");
                     String authorization = request.requestHeaders()
                             .get(HttpHeaders.AUTHORIZATION);
+                    String cookie = request.requestHeaders().get(HttpHeaders.COOKIE);
                     return response
                             .header(
                                     RECEIVED_AUTHORIZATION_HEADER,
@@ -201,6 +220,14 @@ class GatewaySecurityIntegrationTest {
                             .header(
                                     RECEIVED_GLOBAL_ROLE_HEADER,
                                     globalRole == null ? "absent" : globalRole
+                            )
+                            .header(
+                                    RECEIVED_COOKIE_HEADER,
+                                    cookie == null ? "absent" : cookie
+                            )
+                            .header(
+                                    HttpHeaders.SET_COOKIE,
+                                    "OMAGOTCHI_SESSION=downstream-value; Path=/; HttpOnly"
                             )
                             .header(HttpHeaderNames.CONTENT_TYPE, "text/plain")
                             .sendString(reactor.core.publisher.Mono.just("ok"));

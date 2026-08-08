@@ -13,13 +13,19 @@ spring:
             locator:
               enabled: false
 
-          default-filters: # 외부에서 온 헤더를 신뢰하지 않고, 다시 만들지도 않음
+          default-filters: # 외부 식별 Header와 Browser Session Cookie의 Gateway 경계 차단
             - name: RemoveRequestHeader
               args:
                 name: X-User-Id
             - name: RemoveRequestHeader
               args:
                 name: X-Global-Role
+            - name: RemoveRequestHeader
+              args:
+                name: Cookie
+            - name: RemoveResponseHeader
+              args:
+                name: Set-Cookie
 
           routes:
             - id: identity-service-route
@@ -27,8 +33,7 @@ spring:
               predicates:
                 - name: Path
                   args:
-                    patterns.0: /api/v1/auth/**
-                    patterns.1: /api/v1/users/**
+                    patterns.0: /api/v1/users/**
 
             - id: learning-service-route
               uri: ${LEARNING_SERVICE_URI}
