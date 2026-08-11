@@ -80,7 +80,7 @@ class GatewaySecurityIntegrationTest {
     @ParameterizedTest
     @CsvSource({
             "POST, /api/telegram/webhook",
-            "GET, /api/rules/ping"
+            "GET, /api/v1/rules/ping"
     })
     @DisplayName("공개 경로는 Access JWT 없이 전달")
     void publicRoutesDoNotRequireBearerToken(String method, String path) {

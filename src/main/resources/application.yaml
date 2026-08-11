@@ -50,7 +50,7 @@ spring:
               predicates:
                 - name: Path
                   args:
-                    patterns.0: /api/rules/**
+                    patterns.0: /api/v1/rules/**
 
 eureka:
   client:

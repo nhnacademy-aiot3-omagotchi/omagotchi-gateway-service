@@ -40,7 +40,7 @@ public class SecurityConfig {
                                 "/api/telegram/webhook"
                         ).permitAll()
                         .pathMatchers(HttpMethod.GET,
-                                "/api/rules/ping"
+                                "/api/v1/rules/ping"
                         ).permitAll()
                         .pathMatchers(
                                 "/actuator/health",
