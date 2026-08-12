@@ -125,6 +125,18 @@ class GatewaySecurityIntegrationTest {
         response.expectStatus().isNotFound();
     }
 
+    @Test
+    @DisplayName("Telegram Webhook 비-POST 무인증 요청의 401 응답")
+    void requiresBearerTokenForNonPostTelegramWebhook() {
+        // When
+        WebTestClient.ResponseSpec response = webTestClient.get()
+                .uri("/api/v1/webhooks/telegram")
+                .exchange();
+
+        // Then
+        response.expectStatus().isUnauthorized();
+    }
+
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"signup", "login", "refresh", "logout"})
     @DisplayName("Identity 인증 API는 Gateway에서 라우팅하지 않음")
