@@ -37,10 +37,10 @@ public class SecurityConfig {
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
                 .authorizeExchange(authorize -> authorize
                         .pathMatchers(HttpMethod.POST,
-                                "/api/telegram/webhook"
+                                "/api/v1/webhooks/telegram"
                         ).permitAll()
                         .pathMatchers(HttpMethod.GET,
-                                "/api/rules/ping"
+                                "/api/v1/rules/ping"
                         ).permitAll()
                         .pathMatchers(
                                 "/actuator/health",

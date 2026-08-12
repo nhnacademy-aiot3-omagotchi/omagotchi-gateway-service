@@ -13,7 +13,8 @@ spring:
             locator:
               enabled: false
 
-          default-filters: # 외부 식별 Header와 Browser Session Cookie의 Gateway 경계 차단
+          # 외부 식별 Header와 Browser Session Cookie의 Gateway 경계 차단
+          default-filters:
             - name: RemoveRequestHeader
               args:
                 name: X-User-Id
@@ -40,17 +41,37 @@ spring:
               predicates:
                 - name: Path
                   args:
-                    patterns.0: /api/cohorts/**
-                    patterns.1: /api/cohort-memberships/**
-                    patterns.2: /api/v1/cohorts/**
-                    patterns.3: /api/telegram/**
+                    patterns.0: /api/v1/cohorts/**
+                    patterns.1: /api/v1/cohort-memberships/**
+                    patterns.2: /api/v1/teams/**
+                    patterns.3: /api/v1/spaces/**
+                    patterns.4: /api/v1/admin/spaces/**
+                    patterns.5: /api/v1/threshold-rules/**
+                    patterns.6: /api/v1/community/posts/**
+                    patterns.7: /api/v1/gamification/**
+                    patterns.8: /api/v1/rankings/**
+                    patterns.9: /api/v1/user-profiles/**
+                    patterns.10: /api/v1/telegram/**
+
+            # Telegram 서버 Callback: JWT 없이 허용하는 POST 전용 경로
+            # 기존 Learning Route에 Method=POST를 추가하면 사용자 API까지 POST로 제한되므로 별도 Route 구성
+            - id: learning-service-webhook-route
+              uri: ${LEARNING_SERVICE_URI}
+              predicates:
+                - name: Path
+                  args:
+                    patterns.0: /api/v1/webhooks/telegram
+                - name: Method
+                  args:
+                    methods.0: POST
 
             - id: rule-service-route
               uri: ${RULE_SERVICE_URI}
               predicates:
                 - name: Path
                   args:
-                    patterns.0: /api/rules/**
+                    patterns.0: /api/v1/rules/**
+                    patterns.1: /api/v1/flows/**
 
 eureka:
   client:
