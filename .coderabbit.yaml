@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit review policy for the external WebFlux gateway boundary.
+
+language: "ko-KR"
+tone_instructions: >
+  문제를 지적할 때 원인과 영향 범위를 설명하고, 필요하면 공식 문서나 근거를 함께 제안해주세요.
+  단, 추측만으로 변경을 요구하지 말고 실제 요청 흐름과 테스트를 근거로 판단해주세요.
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  changed_files_summary: true
+  collapse_walkthrough: true
+  sequence_diagrams: true
+  assess_linked_issues: true
+  related_issues: false
+  related_prs: true
+  suggested_labels: false
+  auto_apply_labels: false
+  suggested_reviewers: false
+  auto_assign_reviewers: false
+  poem: false
+  enable_prompt_for_ai_agents: false
+
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+    title:
+      mode: "warning"
+      requirements: "무엇을 왜 바꿨는지 드러내세요. 예: fix(gateway): 외부 API 인증 경계를 보강"
+
+  auto_review:
+    enabled: false
+    labels: ["review-ready"]
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 2
+    ignore_title_keywords: ["WIP", "wip", "[skip review]"]
+
+  path_filters:
+    - "!**/target/**"
+    - "!**/.mvn/**"
+    - "!mvnw"
+    - "!mvnw.cmd"
+    - "!**/generated/**"
+    - "!**/*.lock"
+
+  path_instructions:
+    - path: "**/*.java"
+      instructions: |
+        이 서비스는 외부 /api/**와 Webhook의 Routing·1차 인증 경계입니다.
+        Frontend BFF 내부 호출을 Gateway로 중계하거나 업무 규칙을 Gateway에 넣는 변경을 지적해주세요.
+        Spring WebFlux 요청 흐름에서 block(), 동기 I/O, 누락된 오류 응답·보안 헤더를 확인해주세요.
+
+    - path: "**/src/main/resources/application*.{yml,yaml,properties}"
+      instructions: |
+        Route predicate/filter, CORS, 인증·인가 경계, 서비스 대상 URI가 실제 외부 계약과 일치하는지 검토해주세요.
+        평문 Secret·Key·Token, 공개되면 안 되는 Actuator Endpoint, 운영 기본값이 local 개발 설정에 의존하는 문제를 지적해주세요.
+
+    - path: "**/src/test/**"
+      instructions: |
+        Route와 Security 변경이 실제로 영향을 주는 허용·거부·인증 누락·잘못된 토큰·CORS·하위 서비스 오류 경계를 검증하는지 확인해주세요.
+        변경과 무관한 경계의 테스트를 일괄 요구하지 마세요.
+        테스트가 실제 HTTP 경계 대신 내부 구현 세부에 과도하게 결합되지 않는지 살펴주세요.
+
+    - path: "**/pom.xml"
+      instructions: |
+        Java 21, Spring Boot 4.1.0, Spring Cloud 2025.1.2 BOM을 확인해주세요.
+        Spring이 관리하는 의존성에 개별 version을 지정하거나 production dependency를 불필요하게 추가하면 지적해주세요.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Secret 노출, pull_request_target 오용, 태그로만 고정된 third-party Action, 과도한 GITHUB_TOKEN 권한을 지적해주세요.
+
+chat:
+  auto_reply: false
+
+knowledge_base:
+  web_search:
+    enabled: true
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "docs/**/*.md"
+      - "README.md"
+  learnings:
+    scope: "local"
+  issues:
+    scope: "local"
+  pull_requests:
+    scope: "local"

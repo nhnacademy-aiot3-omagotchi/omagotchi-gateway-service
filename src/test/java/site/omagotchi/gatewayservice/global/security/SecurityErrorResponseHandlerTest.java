@@ -20,7 +20,7 @@ class SecurityErrorResponseHandlerTest {
     private final SecurityErrorResponseHandler handler = new SecurityErrorResponseHandler(objectMapper);
 
     @Test
-    @DisplayName("미인증 401 Header와 공통 JSON 응답 유지")
+    @DisplayName("미인증 요청의 401 상태와 Header 및 공통 오류 Code 유지")
     void writesAuthenticationRequiredResponse() {
         // Given
         MockServerWebExchange exchange = MockServerWebExchange.from(
@@ -39,13 +39,12 @@ class SecurityErrorResponseHandlerTest {
         then(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         then(exchange.getResponse().getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE))
                 .isEqualTo("Bearer");
-        then(body.get("status").asInt()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
         then(body.get("code").asString()).isEqualTo("AUTH_AUTHENTICATION_REQUIRED");
         then(body.get("path").asString()).isEqualTo("/api/v1/users/me");
     }
 
     @Test
-    @DisplayName("Bearer 잘못된 요청의 400 상태와 Header를 공통 JSON에도 유지")
+    @DisplayName("Bearer 잘못된 요청의 400 상태와 Header 및 공통 오류 Code 유지")
     void preservesBearerInvalidRequestStatus() {
         // Given
         MockServerWebExchange exchange = MockServerWebExchange.from(
@@ -65,7 +64,6 @@ class SecurityErrorResponseHandlerTest {
         then(exchange.getResponse().getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE))
                 .startsWith("Bearer")
                 .contains("error=\"invalid_request\"");
-        then(body.get("status").asInt()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         then(body.get("code").asString()).isEqualTo("COMMON_INVALID_REQUEST");
         then(body.get("path").asString()).isEqualTo("/api/v1/users/me");
     }

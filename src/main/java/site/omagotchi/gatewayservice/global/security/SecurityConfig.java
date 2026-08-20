@@ -28,8 +28,7 @@ public class SecurityConfig {
             ServerAuthenticationConverter bearerTokenAuthenticationConverter
     ) {
         http
-                // Access Token은 Bearer Header 사용
-                // Refresh Cookie 요청의 Origin 검증은 Identity가 소유
+                // Browser Session과 CSRF는 Frontend가 소유하고 Gateway는 Bearer Token만 받음
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
@@ -38,14 +37,10 @@ public class SecurityConfig {
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
                 .authorizeExchange(authorize -> authorize
                         .pathMatchers(HttpMethod.POST,
-                                "/api/v1/auth/signup",
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout",
-                                "/api/telegram/webhook"
+                                "/api/v1/webhooks/telegram"
                         ).permitAll()
                         .pathMatchers(HttpMethod.GET,
-                                "/api/rules/ping"
+                                "/api/v1/rules/ping"
                         ).permitAll()
                         .pathMatchers(
                                 "/actuator/health",
