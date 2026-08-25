@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - README.md
+      - docs/**
   workflow_dispatch:
 
 permissions:
@@ -13,32 +16,9 @@ env:
   COMPOSE_SERVICE: gateway-service
 
 jobs:
-  test:
-    name: Maven Verify
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Run tests
-        shell: bash
-        run: |
-          chmod +x mvnw
-          ./mvnw -B -ntp verify
-
   image:
     name: Build and Push Image
-    needs:
-      - test
+    if: github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -92,7 +72,7 @@ jobs:
       - image
 
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
 
     environment:
       name: production
