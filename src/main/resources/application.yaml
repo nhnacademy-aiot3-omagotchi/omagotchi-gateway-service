@@ -57,6 +57,7 @@ spring:
                     patterns.9: /api/v1/user-profiles/**
                     patterns.10: /api/v1/telegram/**
                     patterns.11: /api/v1/sensors/**
+                    patterns.12: /api/v1/chat/**
 
             # Telegram 서버 Callback: JWT 없이 허용하는 POST 전용 경로
             # 기존 Learning Route에 Method=POST를 추가하면 사용자 API까지 POST로 제한되므로 별도 Route 구성
