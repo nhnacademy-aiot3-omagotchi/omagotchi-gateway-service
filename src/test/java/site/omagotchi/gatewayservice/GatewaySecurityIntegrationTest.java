@@ -391,7 +391,11 @@ class GatewaySecurityIntegrationTest {
         response
                 .expectStatus().isOk()
                 .expectHeader().valueEquals(RECEIVED_SERVICE_HEADER, "identity")
-                .expectHeader().valueEquals(RECEIVED_PATH_HEADER, path);
+                .expectHeader().valueEquals(RECEIVED_PATH_HEADER, path)
+                .expectHeader().valueEquals(
+                        RECEIVED_AUTHORIZATION_HEADER,
+                        "Bearer " + token
+                );
     }
 
     @Test
