@@ -221,6 +221,31 @@ class GatewaySecurityIntegrationTest {
                 .expectHeader().valueEquals(RECEIVED_PATH_HEADER, path);
     }
 
+    @ParameterizedTest(name = "{0} {1}")
+    @CsvSource({
+            "POST, /api/v1/spaces/1/vacancy-alerts",
+            "GET, /api/v1/vacancy-alerts/me",
+            "DELETE, /api/v1/vacancy-alerts/1"
+    })
+    @DisplayName("공실 알림 API는 Learning Service로 전달")
+    void routesVacancyAlertApi(String method, String path) {
+        // Given
+        String token = TestJwtKeyConfig.issue();
+
+        // When
+        WebTestClient.ResponseSpec response = webTestClient
+                .method(HttpMethod.valueOf(method))
+                .uri(path)
+                .headers(headers -> headers.setBearerAuth(token))
+                .exchange();
+
+        // Then
+        response
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(RECEIVED_SERVICE_HEADER, "learning")
+                .expectHeader().valueEquals(RECEIVED_PATH_HEADER, path);
+    }
+
     @ParameterizedTest(name = "{1}")
     @CsvSource({
             "GET, /api/cohorts",
