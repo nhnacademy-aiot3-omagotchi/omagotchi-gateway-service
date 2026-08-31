@@ -374,6 +374,41 @@ class GatewaySecurityIntegrationTest {
                 .jsonPath("$.code").isEqualTo("COMMON_INVALID_REQUEST");
     }
 
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"/api/v1/admin/users", "/api/v1/admin/users/"})
+    @DisplayName("Identity 관리자 사용자 API는 원본 v1 경로로 Identity Service에 전달")
+    void routesIdentityAdminUserApi(String path) {
+        // Given
+        String token = TestJwtKeyConfig.issue();
+
+        // When
+        WebTestClient.ResponseSpec response = webTestClient.get()
+                .uri(path)
+                .headers(headers -> headers.setBearerAuth(token))
+                .exchange();
+
+        // Then
+        response
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(RECEIVED_SERVICE_HEADER, "identity")
+                .expectHeader().valueEquals(RECEIVED_PATH_HEADER, path);
+    }
+
+    @Test
+    @DisplayName("Identity 관리자 사용자 API 무인증 요청의 401 응답")
+    void requiresBearerTokenForIdentityAdminUserApi() {
+        // When
+        WebTestClient.ResponseSpec response = webTestClient.get()
+                .uri("/api/v1/admin/users")
+                .exchange();
+
+        // Then
+        response
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("AUTH_AUTHENTICATION_REQUIRED");
+    }
+
     /*
      * - 실제 서비스 대신 요청을 받는 최소 Reactor Netty HTTP 서버
      * - 요청 Header를 응답 Header로 반환해 Gateway를 통과한 최종 요청 확인
