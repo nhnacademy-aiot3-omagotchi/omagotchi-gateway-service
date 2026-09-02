@@ -47,6 +47,7 @@ IntelliJ HTTP Client를 이용한 `Nginx → Gateway → Domain Service` 호출 
   - 다른 `.http` 파일에서 `Run with` 선택 불필요
   - Access Token 만료로 401 발생 시 `auth.http` 다시 실행
   - `baseUrl` 미치환 오류 시 `auth.http`의 **Access Token 발급·갱신** 재실행
+  - 비밀번호 변경·본인 탈퇴 성공 시 저장 Token 자동 초기화
 
 - **다른 계정으로 전환**
 

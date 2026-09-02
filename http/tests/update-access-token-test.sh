@@ -88,6 +88,8 @@ if [[ "$*" == *"/api/v1/auth/logout"* ]]; then
   printf '\n204'
 elif [[ "$(jq -r '.refreshToken // ""' <<< "${payload}")" == "prod-refresh-rejected" ]]; then
   printf '{"code":"INVALID_REFRESH_TOKEN"}\n401'
+elif [[ "$(jq -r '.password // ""' <<< "${payload}")" == "prod-login-rejected" ]]; then
+  printf '{"code":"INVALID_CREDENTIALS"}\n401'
 elif jq -e 'has("refreshToken")' >/dev/null <<< "${payload}"; then
   printf '{"accessToken":"prod-access-2","accessTokenExpiresAt":"2030-01-01T00:15:00Z","refreshToken":"prod-refresh-2","refreshTokenExpiresAt":"2030-01-08T00:00:00Z"}\n200'
 else
@@ -186,5 +188,33 @@ run_updater prod logout
 assert_equals "${ssh_call_count_before_idempotent_logout}" \
   "$(cat "${SSH_STATE_FILE}")" \
   "저장된 Refresh Token이 없는 멱등 Logout의 원격 요청 생략"
+
+rejected_login_env="${PRIVATE_ENV_FILE}.rejected-login"
+jq '.prod.accessToken = "prod-access-stale"
+    | .prod.refreshToken = "prod-refresh-rejected"
+    | .prod.accessTokenExpiresAt = "2030-01-01T00:15:00Z"
+    | .prod.refreshTokenExpiresAt = "2030-01-08T00:00:00Z"
+    | .prod.accountPassword = "prod-login-rejected"' \
+  "${PRIVATE_ENV_FILE}" > "${rejected_login_env}"
+mv "${rejected_login_env}" "${PRIVATE_ENV_FILE}"
+if run_updater prod > "${TEST_DIR}/rejected-login.out" \
+    2> "${TEST_DIR}/rejected-login.log"; then
+  echo "운영 Refresh·Login 거절이 성공으로 처리됨" >&2
+  exit 1
+fi
+assert_token_bundle_cleared prod
+grep -Fq "Identity Login 응답: HTTP 401" \
+  "${TEST_DIR}/rejected-login.log" \
+  || {
+    echo "운영 Login 거절 안내 누락" >&2
+    exit 1
+  }
+
+cleared_call_count="$(cat "${SSH_STATE_FILE}")"
+run_updater prod clear
+assert_token_bundle_cleared prod
+assert_equals "${cleared_call_count}" \
+  "$(cat "${SSH_STATE_FILE}")" \
+  "로컬 저장 Token 초기화의 원격 요청 생략"
 
 echo "update-access-token.sh 테스트 성공"

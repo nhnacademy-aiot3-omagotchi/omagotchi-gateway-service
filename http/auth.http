@@ -13,6 +13,8 @@
     client.global.set("accessToken", accessToken);
     client.global.set("baseUrl", request.environment.get("baseUrl"));
     client.global.set("loginEmail", request.environment.get("loginEmail"));
+    client.global.set("environmentName", request.environment.get("environmentName"));
+    client.global.set("tokenUpdaterPath", request.environment.get("tokenUpdaterPath"));
 %}
 GET {{baseUrl}}/api/v1/users/me
 Authorization: Bearer {{accessToken}}
@@ -21,12 +23,15 @@ Cache-Control: no-store
 
 > {%
     client.test("Access Token 발급과 계정 확인 성공", function () {
+        const loginEmail = request.environment.get("loginEmail");
+
         client.assert(response.status === 200, "예상 Status: 200");
         client.assert(response.body.userId, "userId 누락");
         client.assert(response.body.email, "email 누락");
+        client.assert(loginEmail, "환경 파일에 loginEmail을 입력하세요.");
         client.assert(
             response.body.email.toLowerCase()
-                === request.environment.get("loginEmail").trim().toLowerCase(),
+                === loginEmail.trim().toLowerCase(),
             "Access Token 계정과 loginEmail 불일치"
         );
     });
@@ -46,6 +51,8 @@ Cache-Control: no-store
     client.global.clear("refreshTokenExpiresAt");
     client.global.clear("baseUrl");
     client.global.clear("loginEmail");
+    client.global.clear("environmentName");
+    client.global.clear("tokenUpdaterPath");
 %}
 GET {{gatewayHealthUrl}}
 Accept: application/json

@@ -50,10 +50,13 @@ Cache-Control: no-store
 }
 
 > {%
+    import { runTokenUpdater } from "./scripts/token-updater.js";
+
     client.test("본인 비밀번호 변경 성공", function () {
         client.assert(response.status === 204, "예상 Status: 204");
     });
     if (response.status === 204) {
+        runTokenUpdater("clear");
         client.global.clear("accessToken");
         client.global.clear("accessTokenExpiresAt");
         client.global.clear("refreshToken");
@@ -80,10 +83,13 @@ Cache-Control: no-store
 }
 
 > {%
+    import { runTokenUpdater } from "./scripts/token-updater.js";
+
     client.test("본인 계정 탈퇴 성공", function () {
         client.assert(response.status === 204, "예상 Status: 204");
     });
     if (response.status === 204) {
+        runTokenUpdater("clear");
         client.global.clear("accessToken");
         client.global.clear("accessTokenExpiresAt");
         client.global.clear("refreshToken");

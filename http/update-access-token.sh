@@ -242,6 +242,7 @@ request_token_bundle() {
     fi
     [[ "${RESPONSE_STATUS}" == "401" ]] \
       || fail "Identity Refresh 응답: HTTP ${RESPONSE_STATUS}"
+    clear_token_bundle
     echo "Refresh Token이 거절되어 Login으로 재발급합니다." >&2
   fi
 
@@ -328,12 +329,24 @@ main() {
   jq empty "${PUBLIC_ENV_FILE}" >/dev/null 2>&1 \
     || fail "공개 환경 파일이 올바른 JSON이 아닙니다."
 
+  case "${COMMAND}" in
+    prepare|logout|clear)
+      ;;
+    *)
+      fail "두 번째 인자는 prepare, logout 또는 clear여야 합니다."
+      ;;
+  esac
+
   case "${ENVIRONMENT_NAME}" in
     local)
-      require_command "${CURL_BIN}"
+      if [[ "${COMMAND}" != "clear" ]]; then
+        require_command "${CURL_BIN}"
+      fi
       ;;
     prod)
-      require_command "${SSH_BIN}"
+      if [[ "${COMMAND}" != "clear" ]]; then
+        require_command "${SSH_BIN}"
+      fi
       ;;
     *)
       fail "첫 번째 인자로 local 또는 prod를 지정하세요."
@@ -341,15 +354,16 @@ main() {
   esac
 
   case "${COMMAND}" in
+    clear)
+      clear_token_bundle
+      return
+      ;;
     logout)
       logout_token_bundle
       return
       ;;
     prepare)
       request_token_bundle
-      ;;
-    *)
-      fail "두 번째 인자는 prepare 또는 logout이어야 합니다."
       ;;
   esac
 
