@@ -34,7 +34,7 @@ import java.time.Duration;
 @ActiveProfiles("test")
 // 테스트 JWT 발급과 검증에 같은 RSA key pair가 필요해서 테스트 공개키 Bean 사용
 @Import(TestJwtKeyConfig.class)
-class GatewaySecurityIntegrationTest {
+class GatewaySecurityIT {
 
     private static final String LOOPBACK_HOST = "127.0.0.1";
 
@@ -90,8 +90,8 @@ class GatewaySecurityIntegrationTest {
             "POST, /api/v1/webhooks/telegram, learning",
             "GET, /api/v1/rules/ping, rule"
     })
-    @DisplayName("공개 경로는 Access JWT 없이 전달")
-    void publicRoutesDoNotRequireBearerToken(
+    @DisplayName("Gateway Bearer 예외 경로는 Access JWT 없이 전달")
+    void bearerExemptRoutesDoNotRequireBearerToken(
             String method,
             String path,
             String expectedService
@@ -138,15 +138,22 @@ class GatewaySecurityIntegrationTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"signup", "login", "refresh", "logout"})
+    @ValueSource(strings = {
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/signup",
+            "/api/v2/auth/signup",
+            "/api/v2/auth/signup/email-otp"
+    })
     @DisplayName("Identity 인증 API는 Gateway에서 라우팅하지 않음")
-    void doesNotRouteIdentityAuthApi(String operation) {
+    void doesNotRouteIdentityAuthApi(String path) {
         // Given
         String token = TestJwtKeyConfig.issue();
 
         // When
         WebTestClient.ResponseSpec response = webTestClient.post()
-                .uri("/api/v1/auth/" + operation)
+                .uri(path)
                 .headers(headers -> headers.setBearerAuth(token))
                 .exchange();
 
@@ -170,7 +177,7 @@ class GatewaySecurityIntegrationTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"/api/v1/rules", "/api/v1/flows"})
+    @ValueSource(strings = {"/api/v1/rules", "/api/v1/flows", "/api/v1/engines"})
     @DisplayName("Rule API는 Rule Service로 전달")
     void routesRuleApi(String path) {
         // Given
@@ -196,12 +203,15 @@ class GatewaySecurityIntegrationTest {
             "/api/v1/teams",
             "/api/v1/spaces",
             "/api/v1/admin/spaces",
-            "/api/v1/threshold-rules",
             "/api/v1/community/posts",
             "/api/v1/gamification",
-            "/api/v1/rankings",
             "/api/v1/user-profiles/me",
-            "/api/v1/telegram/link"
+            "/api/v1/telegram/link",
+            "/api/v1/occupancies/me",
+            "/api/v1/chat",
+            "/api/v1/cohorts/1/threshold-rules",
+            "/api/v1/cohorts/1/study-rankings/today",
+            "/api/v1/cohorts/1/sensors"
     })
     @DisplayName("Learning 공개 API는 원본 v1 경로로 Learning Service에 전달")
     void routesLearningApi(String path) {
@@ -235,6 +245,26 @@ class GatewaySecurityIntegrationTest {
         // When
         WebTestClient.ResponseSpec response = webTestClient
                 .method(HttpMethod.valueOf(method))
+                .uri(path)
+                .headers(headers -> headers.setBearerAuth(token))
+                .exchange();
+
+        // Then
+        response
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(RECEIVED_SERVICE_HEADER, "learning")
+                .expectHeader().valueEquals(RECEIVED_PATH_HEADER, path);
+    }
+
+    @Test
+    @DisplayName("Learning 공부 시간 예측 API는 Learning Service로 전달")
+    void routesLearningPredictionApi() {
+        // Given
+        String token = TestJwtKeyConfig.issue();
+        String path = "/api/v1/cohorts/1/predictions/study-time";
+
+        // When
+        WebTestClient.ResponseSpec response = webTestClient.post()
                 .uri(path)
                 .headers(headers -> headers.setBearerAuth(token))
                 .exchange();
@@ -374,15 +404,19 @@ class GatewaySecurityIntegrationTest {
                 .jsonPath("$.code").isEqualTo("COMMON_INVALID_REQUEST");
     }
 
-    @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"/api/v1/admin/users", "/api/v1/admin/users/"})
-    @DisplayName("Identity 관리자 사용자 API는 원본 v1 경로로 Identity Service에 전달")
-    void routesIdentityAdminUserApi(String path) {
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "GET, /api/v1/admin/users",
+            "PATCH, /api/v1/admin/accounts/00000000-0000-0000-0000-000000000001/status"
+    })
+    @DisplayName("Identity 관리자 API는 원본 v1 경로로 Identity Service에 전달")
+    void routesIdentityAdminApi(String method, String path) {
         // Given
         String token = TestJwtKeyConfig.issue();
 
         // When
-        WebTestClient.ResponseSpec response = webTestClient.get()
+        WebTestClient.ResponseSpec response = webTestClient
+                .method(HttpMethod.valueOf(method))
                 .uri(path)
                 .headers(headers -> headers.setBearerAuth(token))
                 .exchange();
@@ -398,12 +432,17 @@ class GatewaySecurityIntegrationTest {
                 );
     }
 
-    @Test
-    @DisplayName("Identity 관리자 사용자 API 무인증 요청의 401 응답")
-    void requiresBearerTokenForIdentityAdminUserApi() {
+    @ParameterizedTest(name = "{0} {1}")
+    @CsvSource({
+            "GET, /api/v1/admin/users",
+            "PATCH, /api/v1/admin/accounts/00000000-0000-0000-0000-000000000001/status"
+    })
+    @DisplayName("Identity 관리자 API 무인증 요청의 401 응답")
+    void requiresBearerTokenForIdentityAdminApi(String method, String path) {
         // When
-        WebTestClient.ResponseSpec response = webTestClient.get()
-                .uri("/api/v1/admin/users")
+        WebTestClient.ResponseSpec response = webTestClient
+                .method(HttpMethod.valueOf(method))
+                .uri(path)
                 .exchange();
 
         // Then
@@ -411,6 +450,49 @@ class GatewaySecurityIntegrationTest {
                 .expectStatus().isUnauthorized()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("AUTH_AUTHENTICATION_REQUIRED");
+    }
+
+    @ParameterizedTest(name = "{0} {1}")
+    @CsvSource({
+            "POST, /api/v1/admin/users",
+            "GET, /api/v1/admin/users/00000000-0000-0000-0000-000000000001",
+            "GET, /api/v1/admin/accounts/00000000-0000-0000-0000-000000000001/status",
+            "PATCH, /api/v1/admin/accounts/00000000-0000-0000-0000-000000000001/status/history",
+            "PATCH, /api/v1/admin/accounts/00000000-0000-0000-0000-000000000001"
+    })
+    @DisplayName("허용한 조회·상태 변경 Endpoint 외 Identity 관리자 경로는 라우팅하지 않음")
+    void doesNotRouteOtherIdentityAdminApi(String method, String path) {
+        String token = TestJwtKeyConfig.issue();
+
+        webTestClient
+                .method(HttpMethod.valueOf(method))
+                .uri(path)
+                .headers(headers -> headers.setBearerAuth(token))
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @ParameterizedTest(name = "{0} {1}")
+    @CsvSource({
+            "POST, /api/v1/engines",
+            "POST, /api/v1/occupancies/me",
+            "POST, /api/v1/recovery/replay",
+            "POST, /api/v1/predictions/study-time"
+    })
+    @DisplayName("운영 확인 범위 밖의 Method·내부 API는 라우팅하지 않음")
+    void doesNotRouteOperationalOrInternalApiOutsideAllowlist(String method, String path) {
+        // Given
+        String token = TestJwtKeyConfig.issue();
+
+        // When
+        WebTestClient.ResponseSpec response = webTestClient
+                .method(HttpMethod.valueOf(method))
+                .uri(path)
+                .headers(headers -> headers.setBearerAuth(token))
+                .exchange();
+
+        // Then
+        response.expectStatus().isNotFound();
     }
 
     /*

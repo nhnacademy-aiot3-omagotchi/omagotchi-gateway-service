@@ -15,6 +15,7 @@ target/
 
 ### IntelliJ IDEA ###
 .idea
+http-client.private.env.json*
 *.iws
 *.iml
 *.ipr

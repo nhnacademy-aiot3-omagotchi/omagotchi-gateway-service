@@ -1,0 +1,44 @@
+@page = 0
+@size = 20
+@sort = CREATED_AT_DESC
+
+### 본인 계정 조회
+# @name getMyAccount
+# @no-log
+GET {{baseUrl}}/api/v1/users/me
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("본인 계정 조회 성공", function () {
+        const loginEmail = client.variables.get("loginEmail");
+
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(response.body.userId, "userId 누락");
+        client.assert(response.body.email, "email 누락");
+        client.assert(response.body.name, "name 누락");
+        client.assert(loginEmail, "auth.http에서 Access Token을 먼저 준비하세요.");
+        client.assert(
+            response.body.email.toLowerCase()
+                === loginEmail.trim().toLowerCase(),
+            "Access Token 계정과 loginEmail 불일치"
+        );
+    });
+%}
+
+### 사용자 목록 조회
+# @name getAdminUsers
+# @no-log
+GET {{baseUrl}}/api/v1/admin/users?page={{page}}&size={{size}}&sort={{sort}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("사용자 목록 공통 페이지 계약 확인", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(Array.isArray(response.body.items), "items 배열 누락");
+        client.assert(response.body.page, "page 객체 누락");
+        client.assert(response.body.page.number === Number(client.variables.file.get("page")), "page.number 불일치");
+        client.assert(response.body.page.size === Number(client.variables.file.get("size")), "page.size 불일치");
+    });
+%}
