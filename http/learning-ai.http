@@ -1,0 +1,39 @@
+@cohortId = 1
+@chatModel = GEMINI
+@chatQuestion = 한 문장으로 안녕하세요라고 답해줘.
+
+### 내일 공부 시간 예측
+# Gateway → Learning → Prediction 전체 호출 경로 확인
+# 상태를 변경하지 않지만 실제 모델 추론을 실행하므로 기본 Smoke에는 포함하지 않는다.
+# @name predictStudyTime
+# @no-log
+POST {{baseUrl}}/api/v1/cohorts/{{cohortId}}/predictions/study-time
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("공부 시간 예측 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(typeof response.body.predictedStudyHours === "number", "predictedStudyHours 누락");
+        client.assert(response.body.modelVersion, "modelVersion 누락");
+    });
+%}
+
+### AI 채팅 스트림
+# 실제 AI API 또는 Ollama를 호출하고 Redis 대화 메모리를 변경하므로 필요한 요청만 개별 실행한다.
+# @name streamChat
+# @no-log
+GET {{baseUrl}}/api/v1/chat?question={{chatQuestion}}&model={{chatModel}}
+Authorization: Bearer {{accessToken}}
+Accept: text/event-stream
+Cache-Control: no-store
+
+> {%
+    client.test("AI 채팅 스트림 연결 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(
+            response.contentType.mimeType === "text/event-stream",
+            "예상 Content-Type: text/event-stream"
+        );
+    });
+%}

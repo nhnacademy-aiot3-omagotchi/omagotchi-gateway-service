@@ -1,0 +1,83 @@
+@ruleFlowId = quality-flow
+
+### Rule 외부 라우팅 Ping
+# @name pingRule
+GET {{baseUrl}}/api/v1/rules/ping
+Accept: text/plain
+
+> {%
+    client.test("Rule Ping 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+    });
+%}
+
+### 현재 Rule 캐시 조회
+# @name getRules
+# @no-log
+GET {{baseUrl}}/api/v1/rules
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("Rule 캐시 조회 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(Array.isArray(response.body), "Rule 배열 누락");
+    });
+%}
+
+### Flow 목록 조회
+# @name getFlows
+# @no-log
+GET {{baseUrl}}/api/v1/flows
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("Flow 목록 조회 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(Array.isArray(response.body), "Flow 배열 누락");
+    });
+%}
+
+### Flow 상세 조회
+# @name getFlow
+# @no-log
+GET {{baseUrl}}/api/v1/flows/{{ruleFlowId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("Flow 상세 조회 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+    });
+%}
+
+### Flow 복제본 Topology 조회
+# 200이어도 topologyHealth가 DEGRADED일 수 있으므로 본문을 함께 확인한다.
+# @name getFlowTopology
+# @no-log
+GET {{baseUrl}}/api/v1/flows/{{ruleFlowId}}/topology
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("Flow Topology 조회 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(response.body.topologyHealth, "topologyHealth 누락");
+    });
+%}
+
+### Rule Engine 복제본 목록 조회
+# SYSTEM_ADMIN 전용. 응답의 내부 host·port를 외부에 공유하지 않는다.
+# @name getRuleEngines
+# @no-log
+GET {{baseUrl}}/api/v1/engines
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    client.test("Rule Engine 목록 조회 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(Array.isArray(response.body), "Engine 배열 누락");
+    });
+%}

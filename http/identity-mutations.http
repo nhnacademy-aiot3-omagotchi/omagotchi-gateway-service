@@ -1,0 +1,148 @@
+@newName = 변경할-이름
+@targetUserId = 00000000-0000-0000-0000-000000000000
+@statusChangeReason = 운영-확인
+@confirmNameChange = DO_NOT_RUN
+@confirmPasswordChange = DO_NOT_RUN
+@confirmAccountWithdrawal = DO_NOT_RUN
+@confirmDisableAccount = DO_NOT_RUN
+@confirmActivateAccount = DO_NOT_RUN
+
+### 본인 이름 변경
+# @name changeMyName
+# @no-log
+< {%
+    if (client.variables.file.get("confirmNameChange") !== "CHANGE_NAME") {
+        throw new Error("confirmNameChange 값을 CHANGE_NAME으로 바꾼 뒤 실행하세요.");
+    }
+%}
+PATCH {{baseUrl}}/api/v1/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Cache-Control: no-store
+
+{
+  "name": "{{newName}}"
+}
+
+> {%
+    client.test("본인 이름 변경 성공", function () {
+        client.assert(response.status === 204, "예상 Status: 204");
+    });
+%}
+
+### 본인 비밀번호 변경
+# 성공 뒤 저장된 Token을 폐기하고 재로그인한다.
+# @name changeMyPassword
+# @no-log
+< {%
+    if (client.variables.file.get("confirmPasswordChange") !== "CHANGE_PASSWORD") {
+        throw new Error("confirmPasswordChange 값을 CHANGE_PASSWORD로 바꾼 뒤 실행하세요.");
+    }
+%}
+PATCH {{baseUrl}}/api/v1/users/me/password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Cache-Control: no-store
+
+{
+  "currentPassword": "{{accountPassword}}",
+  "newPassword": "{{newPassword}}"
+}
+
+> {%
+    import { runTokenUpdater } from "./scripts/token-updater.js";
+
+    client.test("본인 비밀번호 변경 성공", function () {
+        client.assert(response.status === 204, "예상 Status: 204");
+    });
+    if (response.status === 204) {
+        runTokenUpdater("clear");
+        client.global.clear("accessToken");
+        client.global.clear("accessTokenExpiresAt");
+        client.global.clear("refreshToken");
+        client.global.clear("refreshTokenExpiresAt");
+    }
+%}
+
+### 본인 계정 탈퇴
+# 되돌릴 수 없는 운영 상태 변경이다. 전용 테스트 계정에서만 실행한다.
+# @name withdrawMyAccount
+# @no-log
+< {%
+    if (client.variables.file.get("confirmAccountWithdrawal") !== "WITHDRAW_ACCOUNT") {
+        throw new Error("confirmAccountWithdrawal 값을 WITHDRAW_ACCOUNT로 바꾼 뒤 실행하세요.");
+    }
+%}
+DELETE {{baseUrl}}/api/v1/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Cache-Control: no-store
+
+{
+  "currentPassword": "{{accountPassword}}"
+}
+
+> {%
+    import { runTokenUpdater } from "./scripts/token-updater.js";
+
+    client.test("본인 계정 탈퇴 성공", function () {
+        client.assert(response.status === 204, "예상 Status: 204");
+    });
+    if (response.status === 204) {
+        runTokenUpdater("clear");
+        client.global.clear("accessToken");
+        client.global.clear("accessTokenExpiresAt");
+        client.global.clear("refreshToken");
+        client.global.clear("refreshTokenExpiresAt");
+    }
+%}
+
+### 시스템 관리자 계정 비활성화
+# 공유 관리자나 자기 자신을 대상으로 실행하지 않는다.
+# @name disableAccount
+# @no-log
+< {%
+    if (client.variables.file.get("confirmDisableAccount") !== "DISABLE_ACCOUNT") {
+        throw new Error("confirmDisableAccount 값을 DISABLE_ACCOUNT로 바꾼 뒤 실행하세요.");
+    }
+%}
+PATCH {{baseUrl}}/api/v1/admin/accounts/{{targetUserId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Cache-Control: no-store
+
+{
+  "status": "DISABLED",
+  "reason": "{{statusChangeReason}}"
+}
+
+> {%
+    client.test("계정 비활성화 성공", function () {
+        client.assert(response.status === 204, "예상 Status: 204");
+    });
+%}
+
+### 시스템 관리자 계정 활성화 또는 잠금 해제
+# 현재 상태가 DISABLED이면 재활성화, LOCKED이면 잠금 해제다. 목록에서 대상 상태를 먼저 확인한다.
+# @name activateAccount
+# @no-log
+< {%
+    if (client.variables.file.get("confirmActivateAccount") !== "ACTIVATE_ACCOUNT") {
+        throw new Error("confirmActivateAccount 값을 ACTIVATE_ACCOUNT로 바꾼 뒤 실행하세요.");
+    }
+%}
+PATCH {{baseUrl}}/api/v1/admin/accounts/{{targetUserId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Cache-Control: no-store
+
+{
+  "status": "ACTIVE",
+  "reason": "{{statusChangeReason}}"
+}
+
+> {%
+    client.test("계정 활성화 성공", function () {
+        client.assert(response.status === 204, "예상 Status: 204");
+    });
+%}

@@ -40,15 +40,28 @@ spring:
                   args:
                     patterns.0: /api/v1/users/**
 
-            # Identity 관리자 API: 전역 운영 관리자의 사용자 목록 조회
-            # 기존 identity-service-route 설정을 변경하지 않기 위해 별도 Route로 추가
+            # Identity 관리자 API: 사용자 목록 조회
             # SYSTEM_ADMIN 권한 검증은 Identity의 보호 API 경계가 소유
-            - id: identity-service-admin-route
+            - id: identity-service-admin-users-route
               uri: ${IDENTITY_SERVICE_URI}
               predicates:
                 - name: Path
                   args:
-                    patterns.0: /api/v1/admin/users/**
+                    patterns.0: /api/v1/admin/users
+                - name: Method
+                  args:
+                    methods.0: GET
+
+            # Identity 관리자 API: 계정 상태 변경 Endpoint만 외부 공개
+            - id: identity-service-admin-account-status-route
+              uri: ${IDENTITY_SERVICE_URI}
+              predicates:
+                - name: Path
+                  args:
+                    patterns.0: /api/v1/admin/accounts/{user-id}/status
+                - name: Method
+                  args:
+                    methods.0: PATCH
 
             - id: learning-service-route
               uri: ${LEARNING_SERVICE_URI}
@@ -60,15 +73,23 @@ spring:
                     patterns.2: /api/v1/teams/**
                     patterns.3: /api/v1/spaces/**
                     patterns.4: /api/v1/admin/spaces/**
-                    patterns.5: /api/v1/threshold-rules/**
-                    patterns.6: /api/v1/community/posts/**
-                    patterns.7: /api/v1/gamification/**
-                    patterns.8: /api/v1/rankings/**
-                    patterns.9: /api/v1/user-profiles/**
-                    patterns.10: /api/v1/telegram/**
-                    patterns.11: /api/v1/sensors/**
-                    patterns.12: /api/v1/chat/**
-                    patterns.13: /api/v1/vacancy-alerts/**
+                    patterns.5: /api/v1/community/posts/**
+                    patterns.6: /api/v1/gamification/**
+                    patterns.7: /api/v1/user-profiles/**
+                    patterns.8: /api/v1/telegram/**
+                    patterns.9: /api/v1/chat/**
+                    patterns.10: /api/v1/vacancy-alerts/**
+
+            # Learning 내 회의실 점유 상태 조회 Endpoint만 외부 공개
+            - id: learning-service-my-occupancy-route
+              uri: ${LEARNING_SERVICE_URI}
+              predicates:
+                - name: Path
+                  args:
+                    patterns.0: /api/v1/occupancies/me
+                - name: Method
+                  args:
+                    methods.0: GET
 
             # Telegram 서버 Callback: JWT 없이 허용하는 POST 전용 경로
             # 기존 Learning Route에 Method=POST를 추가하면 사용자 API까지 POST로 제한되므로 별도 Route 구성
@@ -89,6 +110,18 @@ spring:
                   args:
                     patterns.0: /api/v1/rules/**
                     patterns.1: /api/v1/flows/**
+
+            # Rule Engine 인스턴스 목록 조회만 외부 운영 확인용으로 공개
+            # 복구 Replay와 내부 Engine API는 Gateway Route 미등록 유지
+            - id: rule-service-engine-list-route
+              uri: ${RULE_SERVICE_URI}
+              predicates:
+                - name: Path
+                  args:
+                    patterns.0: /api/v1/engines
+                - name: Method
+                  args:
+                    methods.0: GET
 
 eureka:
   client:
