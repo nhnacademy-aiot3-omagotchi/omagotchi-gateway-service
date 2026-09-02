@@ -1,0 +1,58 @@
+### Access Token 발급·갱신
+# @name prepareAccessToken
+# @no-log
+< {%
+    import { runTokenUpdater } from "./scripts/token-updater.js";
+
+    const accessToken = runTokenUpdater("prepare");
+
+    if (!accessToken) {
+        throw new Error("발급된 Access Token이 없습니다.");
+    }
+    request.variables.set("accessToken", accessToken);
+    client.global.set("accessToken", accessToken);
+    client.global.set("baseUrl", request.environment.get("baseUrl"));
+    client.global.set("loginEmail", request.environment.get("loginEmail"));
+%}
+GET {{baseUrl}}/api/v1/users/me
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+Cache-Control: no-store
+
+> {%
+    client.test("Access Token 발급과 계정 확인 성공", function () {
+        client.assert(response.status === 200, "예상 Status: 200");
+        client.assert(response.body.userId, "userId 누락");
+        client.assert(response.body.email, "email 누락");
+        client.assert(
+            response.body.email.toLowerCase()
+                === request.environment.get("loginEmail").trim().toLowerCase(),
+            "Access Token 계정과 loginEmail 불일치"
+        );
+    });
+%}
+
+### 로그아웃·저장 Token 초기화
+# 다른 계정으로 전환하기 전에 실행한다.
+# @name logoutAndClearTokens
+# @no-log
+< {%
+    import { runTokenUpdater } from "./scripts/token-updater.js";
+
+    runTokenUpdater("logout");
+    client.global.clear("accessToken");
+    client.global.clear("accessTokenExpiresAt");
+    client.global.clear("refreshToken");
+    client.global.clear("refreshTokenExpiresAt");
+    client.global.clear("baseUrl");
+    client.global.clear("loginEmail");
+%}
+GET {{gatewayHealthUrl}}
+Accept: application/json
+Cache-Control: no-store
+
+> {%
+    client.test("로그아웃·저장 Token 초기화 성공", function () {
+        client.assert(response.status === 200, "Gateway Health 확인 실패");
+    });
+%}
