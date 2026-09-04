@@ -8,6 +8,11 @@ spring:
     discovery:
       enabled: false
 
+logging:
+  level:
+    root: WARN
+    io.netty.resolver.dns.DnsServerAddressStreamProviders: OFF
+
 auth:
   jwt:
     issuer: https://identity.omagotchi.local

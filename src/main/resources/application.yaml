@@ -156,6 +156,16 @@ management:
     health:
       show-details: never
 
+logging:
+  level:
+    root: INFO
+  structured:
+    json:
+      # ECS 필드와 중복되는 Micrometer MDC 원본 이름 제외
+      exclude:
+        - traceId
+        - spanId
+
 auth:
   jwt:
     issuer: ${JWT_ISSUER}
