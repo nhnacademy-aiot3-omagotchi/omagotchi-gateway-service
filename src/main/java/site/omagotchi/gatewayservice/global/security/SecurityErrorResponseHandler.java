@@ -3,7 +3,6 @@ package site.omagotchi.gatewayservice.global.security;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
 import org.springframework.security.access.AccessDeniedException;
@@ -15,20 +14,27 @@ import org.springframework.security.web.server.authorization.ServerAccessDeniedH
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
-import site.omagotchi.gatewayservice.global.exception.ApiErrorResponse;
+import site.omagotchi.gatewayservice.global.exception.ApiErrorResponseWriter;
 import site.omagotchi.gatewayservice.global.exception.CommonErrorCode;
 import site.omagotchi.gatewayservice.global.exception.ErrorCode;
-import tools.jackson.databind.ObjectMapper;
+import site.omagotchi.gatewayservice.global.requestid.RequestId;
 
 import java.util.function.IntFunction;
 
-// Controller 이전에 발생한 Security 예외를 공통 JSON 응답으로 변환
+/**
+ * Spring Security Bearer 처리 결과를 보존한 인증·인가 실패의 공통 JSON 응답.
+ *
+ * <ul>
+ *     <li>Spring Security 책임: 상태와 {@code WWW-Authenticate} 헤더 결정</li>
+ *     <li>서비스 책임: 공통 오류 본문과 Request ID 기록</li>
+ * </ul>
+ */
 @Component
 @NullMarked
 @RequiredArgsConstructor
 public class SecurityErrorResponseHandler implements ServerAuthenticationEntryPoint, ServerAccessDeniedHandler {
 
-    private final ObjectMapper objectMapper;
+    private final ApiErrorResponseWriter responseWriter;
     private final BearerTokenServerAuthenticationEntryPoint bearerTokenAuthenticationEntryPoint =
             new BearerTokenServerAuthenticationEntryPoint();
     private final BearerTokenServerAccessDeniedHandler bearerTokenAccessDeniedHandler =
@@ -39,6 +45,7 @@ public class SecurityErrorResponseHandler implements ServerAuthenticationEntryPo
             ServerWebExchange exchange,
             AuthenticationException exception
     ) {
+        // 인증 실패 상태와 WWW-Authenticate 헤더 결정을 기존 Bearer 처리기에 위임
         ServerWebExchange responseExchange = withJsonBody(
                 exchange,
                 status -> status == HttpStatus.BAD_REQUEST.value()
@@ -53,6 +60,7 @@ public class SecurityErrorResponseHandler implements ServerAuthenticationEntryPo
             ServerWebExchange exchange,
             AccessDeniedException exception
     ) {
+        // 인가 실패 상태와 WWW-Authenticate 헤더 결정을 기존 Bearer 처리기에 위임
         ServerWebExchange responseExchange = withJsonBody(
                 exchange,
                 status -> SecurityErrorCode.ACCESS_DENIED
@@ -64,38 +72,21 @@ public class SecurityErrorResponseHandler implements ServerAuthenticationEntryPo
             ServerWebExchange exchange,
             IntFunction<ErrorCode> errorCodeResolver
     ) {
+        // Bearer 처리기의 상태·WWW-Authenticate 결정 이후 빈 완료 신호의 JSON 본문 교체
         ServerHttpResponse response = new ServerHttpResponseDecorator(exchange.getResponse()) {
             @Override
             public Mono<Void> setComplete() {
                 int status = getStatusCode() == null
                         ? HttpStatus.INTERNAL_SERVER_ERROR.value()
                         : getStatusCode().value();
-                return write(
+                return responseWriter.write(
                         this,
                         errorCodeResolver.apply(status),
-                        exchange.getRequest().getPath().value()
+                        exchange.getRequest().getPath().value(),
+                        exchange.<RequestId>getRequiredAttribute(RequestId.ATTRIBUTE_NAME).value()
                 );
             }
         };
         return exchange.mutate().response(response).build();
-    }
-
-    private Mono<Void> write(
-            ServerHttpResponse response,
-            ErrorCode errorCode,
-            String path
-    ) {
-        ApiErrorResponse body = new ApiErrorResponse(
-                errorCode.code(),
-                errorCode.message(),
-                path,
-                null
-        );
-
-        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        return Mono.fromCallable(() -> objectMapper.writeValueAsBytes(body))
-                .flatMap(bytes -> response.writeWith(Mono.just(
-                        response.bufferFactory().wrap(bytes)
-                )));
     }
 }
