@@ -28,6 +28,9 @@ spring:
             - name: RemoveRequestHeader
               args:
                 name: Cookie
+            - name: RemoveRequestHeader
+              args:
+                name: Baggage
             - name: RemoveResponseHeader
               args:
                 name: Set-Cookie
@@ -136,6 +139,13 @@ eureka:
     prefer-ip-address: true
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+    baggage:
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -145,6 +155,16 @@ management:
   endpoint:
     health:
       show-details: never
+
+logging:
+  level:
+    root: INFO
+  structured:
+    json:
+      # ECS 필드와 중복되는 Micrometer MDC 원본 이름 제외
+      exclude:
+        - traceId
+        - spanId
 
 auth:
   jwt:

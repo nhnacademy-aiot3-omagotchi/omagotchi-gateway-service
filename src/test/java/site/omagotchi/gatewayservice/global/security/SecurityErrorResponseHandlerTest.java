@@ -6,9 +6,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.server.resource.BearerTokenErrors;
+import site.omagotchi.gatewayservice.global.exception.ApiErrorResponseWriter;
+import site.omagotchi.gatewayservice.global.requestid.RequestId;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -16,8 +19,12 @@ import static org.assertj.core.api.BDDAssertions.then;
 
 class SecurityErrorResponseHandlerTest {
 
+    private static final String REQUEST_ID = "0123456789abcdef0123456789abcdef";
+
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final SecurityErrorResponseHandler handler = new SecurityErrorResponseHandler(objectMapper);
+    private final SecurityErrorResponseHandler handler = new SecurityErrorResponseHandler(
+            new ApiErrorResponseWriter(objectMapper)
+    );
 
     @Test
     @DisplayName("미인증 요청의 401 상태와 Header 및 공통 오류 Code 유지")
@@ -26,6 +33,7 @@ class SecurityErrorResponseHandlerTest {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/users/me")
         );
+        exchange.getAttributes().put(RequestId.ATTRIBUTE_NAME, new RequestId(REQUEST_ID));
 
         // When
         handler.commence(
@@ -41,6 +49,7 @@ class SecurityErrorResponseHandlerTest {
                 .isEqualTo("Bearer");
         then(body.get("code").asString()).isEqualTo("AUTH_AUTHENTICATION_REQUIRED");
         then(body.get("path").asString()).isEqualTo("/api/v1/users/me");
+        then(body.get("requestId").asString()).isEqualTo(REQUEST_ID);
     }
 
     @Test
@@ -50,6 +59,7 @@ class SecurityErrorResponseHandlerTest {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/users/me")
         );
+        exchange.getAttributes().put(RequestId.ATTRIBUTE_NAME, new RequestId(REQUEST_ID));
         OAuth2AuthenticationException exception = new OAuth2AuthenticationException(
                 BearerTokenErrors.invalidRequest("잘못된 Bearer 요청")
         );
@@ -66,6 +76,26 @@ class SecurityErrorResponseHandlerTest {
                 .contains("error=\"invalid_request\"");
         then(body.get("code").asString()).isEqualTo("COMMON_INVALID_REQUEST");
         then(body.get("path").asString()).isEqualTo("/api/v1/users/me");
+        then(body.get("requestId").asString()).isEqualTo(REQUEST_ID);
     }
 
+    @Test
+    @DisplayName("인가 실패 응답의 403 상태와 공통 오류 본문 유지")
+    void writesAccessDeniedResponse() {
+        // Given
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/admin/users")
+        );
+        exchange.getAttributes().put(RequestId.ATTRIBUTE_NAME, new RequestId(REQUEST_ID));
+
+        // When
+        handler.handle(exchange, new AccessDeniedException("권한 없음")).block();
+
+        // Then
+        JsonNode body = objectMapper.readTree(exchange.getResponse().getBodyAsString().block());
+        then(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        then(body.get("code").asString()).isEqualTo("AUTH_ACCESS_DENIED");
+        then(body.get("path").asString()).isEqualTo("/api/v1/admin/users");
+        then(body.get("requestId").asString()).isEqualTo(REQUEST_ID);
+    }
 }

@@ -1,0 +1,16 @@
+spring:
+  main:
+    banner-mode: off
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        version: ${SERVICE_VERSION}
+        environment: ${SERVICE_ENVIRONMENT}
+        node-name: ${SERVICE_NODE_NAME}
+    json:
+      stacktrace:
+        max-length: 4096
