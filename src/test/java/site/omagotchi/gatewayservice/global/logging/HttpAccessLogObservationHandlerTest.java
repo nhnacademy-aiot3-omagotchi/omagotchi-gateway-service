@@ -123,9 +123,11 @@ class HttpAccessLogObservationHandlerTest {
         Logger logger = (Logger) LoggerFactory.getLogger(HttpAccessLogObservationHandler.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         boolean additive = logger.isAdditive();
+        Level previousLevel = logger.getLevel();
         appender.start();
         logger.addAppender(appender);
         logger.setAdditive(false);
+        logger.setLevel(Level.INFO);
 
         try {
             handler.onStart(context);
@@ -133,6 +135,7 @@ class HttpAccessLogObservationHandlerTest {
             then(appender.list).singleElement();
             return appender.list.getFirst();
         } finally {
+            logger.setLevel(previousLevel);
             logger.setAdditive(additive);
             logger.detachAppender(appender);
             appender.stop();

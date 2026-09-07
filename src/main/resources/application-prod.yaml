@@ -1,3 +1,16 @@
+management:
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+    export:
+      otlp:
+        enabled: ${TRACING_EXPORT_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      service.version: ${SERVICE_VERSION}
+      service.instance.id: ${SERVICE_NODE_NAME}
+      deployment.environment.name: production
+
 spring:
   main:
     banner-mode: off
