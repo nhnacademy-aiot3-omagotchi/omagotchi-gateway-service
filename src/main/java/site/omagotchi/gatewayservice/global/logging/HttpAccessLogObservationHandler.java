@@ -47,8 +47,9 @@ public class HttpAccessLogObservationHandler implements ObservationHandler<Serve
         }
 
         String path = request.getPath().value();
-        // 주기적인 생존 확인으로 발생하는 접근 이벤트 제외
-        if (path.equals("/actuator/health") || path.startsWith("/actuator/health/")) {
+        // 주기적인 생존 확인·메트릭 수집의 접근 이벤트 제외
+        if (path.equals("/actuator/health") || path.startsWith("/actuator/health/")
+                || path.equals("/actuator/prometheus")) {
             return;
         }
 

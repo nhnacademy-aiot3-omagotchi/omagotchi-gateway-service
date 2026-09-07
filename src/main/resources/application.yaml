@@ -2,6 +2,8 @@ server:
   port: ${SERVER_PORT}
 
 spring:
+  reactor:
+    context-propagation: auto
   application:
     name: gateway-service
 
@@ -139,7 +141,31 @@ eureka:
     prefer-ip-address: true
 
 management:
+  # Trace 전파 유지, Collector 전송은 운영 환경에서만 활성화
+  opentelemetry:
+    tracing:
+      export:
+        max-queue-size: 1024
+        max-batch-size: 128
+        schedule-delay: 5s
+        timeout: 3s
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+          connect-timeout: 1s
+          timeout: 2s
+      limits:
+        max-attributes: 32
+        max-attribute-value-length: 256
+        max-events: 8
+  metrics:
+    distribution:
+      # p95 집계용 고정 Bucket, Route·상태 조합별 Series 증가량 제한
+      slo:
+        http.server.requests: 5ms,10ms,25ms,50ms,100ms,250ms,500ms,1s,2500ms,5s,10s,30s,60s
   tracing:
+    export:
+      otlp:
+        enabled: false
     sampling:
       probability: 1.0
     propagation:
@@ -151,6 +177,7 @@ management:
       exposure:
         include:
           - health
+          - prometheus
           - info
   endpoint:
     health:
