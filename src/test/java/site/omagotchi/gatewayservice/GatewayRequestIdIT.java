@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -99,23 +100,25 @@ class GatewayRequestIdIT {
         DOWNSTREAM.disposeNow();
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = {REQUEST_ID, "Dev-Request_01.test", "Dev-Request_0123456789.abcdefghijk-extra"})
     @DisplayName("같은 Request ID를 하위 서비스 요청과 Gateway 응답에 전달")
-    void propagatesRequestIdAcrossGatewayBoundary() {
+    void propagatesRequestIdAcrossGatewayBoundary(String incoming) {
         // Given
         String jwt = TestJwtKeyConfig.issue();
+        String expected = incoming.substring(0, Math.min(incoming.length(), 32));
 
         // When & Then
         webTestClient.get()
                 .uri("/api/v1/rules")
                 .headers(headers -> {
                     headers.setBearerAuth(jwt);
-                    headers.set(RequestId.HEADER_NAME, REQUEST_ID);
+                    headers.set(RequestId.HEADER_NAME, incoming);
                 })
                 .exchange()
                 .expectStatus().isOk()
-                .expectHeader().valueEquals(RECEIVED_REQUEST_ID, REQUEST_ID)
-                .expectHeader().valueEquals(RequestId.HEADER_NAME, REQUEST_ID)
+                .expectHeader().valueEquals(RECEIVED_REQUEST_ID, expected)
+                .expectHeader().valueEquals(RequestId.HEADER_NAME, expected)
                 .expectBody(String.class).isEqualTo("downstream-response");
     }
 

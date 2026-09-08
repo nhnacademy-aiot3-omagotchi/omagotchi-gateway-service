@@ -20,11 +20,12 @@ class RequestIdWebFilterTest {
 
     private final RequestIdWebFilter filter = new RequestIdWebFilter();
 
-    @Test
-    @DisplayName("정규 형식 Request ID를 요청·응답·Reactor Context에 유지")
-    void preservesCanonicalRequestIdAcrossBoundaries() {
+    @ParameterizedTest
+    @ValueSource(strings = {REQUEST_ID, "Dev-Request_01.test", "Z"})
+    @DisplayName("허용한 Request ID를 요청·응답·Reactor Context에 유지")
+    void preservesAcceptedRequestIdAcrossBoundaries(String incoming) {
         // Given
-        MockServerWebExchange exchange = exchangeWithRequestId(REQUEST_ID);
+        MockServerWebExchange exchange = exchangeWithRequestId(incoming);
         AtomicReference<RequestId> attribute = new AtomicReference<>();
         AtomicReference<RequestId> contextValue = new AtomicReference<>();
         AtomicReference<String> downstreamHeader = new AtomicReference<>();
@@ -39,11 +40,11 @@ class RequestIdWebFilterTest {
         })).block();
 
         // Then
-        then(attribute.get()).isEqualTo(new RequestId(REQUEST_ID));
-        then(contextValue.get()).isEqualTo(new RequestId(REQUEST_ID));
-        then(downstreamHeader.get()).isEqualTo(REQUEST_ID);
+        then(attribute.get()).isEqualTo(new RequestId(incoming));
+        then(contextValue.get()).isEqualTo(new RequestId(incoming));
+        then(downstreamHeader.get()).isEqualTo(incoming);
         then(exchange.getResponse().getHeaders().getFirst(RequestId.HEADER_NAME))
-                .isEqualTo(REQUEST_ID);
+                .isEqualTo(incoming);
     }
 
     @Test
@@ -72,13 +73,12 @@ class RequestIdWebFilterTest {
     @ValueSource(strings = {
             "",
             " ",
-            "0123456789abcdef0123456789abcde",
-            "0123456789ABCDEF0123456789ABCDEF",
-            "01234567-89ab-cdef-0123-456789abcdef",
+            "0123456789abcdef0123456789abcdef!",
+            "invalid request id",
             "0123456789abcdef0123456789abcdef,abcdef0123456789abcdef0123456789"
     })
-    @DisplayName("정규 형식이 아닌 Request ID를 새 ID로 교체")
-    void replacesNonCanonicalRequestId(String inboundRequestId) {
+    @DisplayName("누락되거나 허용하지 않은 문자가 있는 Request ID의 신규 발급")
+    void replacesInvalidRequestId(String inboundRequestId) {
         // Given
         MockServerWebExchange exchange = exchangeWithRequestId(inboundRequestId);
         AtomicReference<String> downstreamHeader = new AtomicReference<>();

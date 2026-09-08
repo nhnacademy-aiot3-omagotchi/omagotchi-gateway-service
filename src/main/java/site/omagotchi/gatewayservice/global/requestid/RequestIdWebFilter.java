@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 
 /**
  * 인증 처리 이전의 Request ID 확정과 요청·응답·Reactor Context 전파.
- * 정규 형식이 아닌 외부 값의 신규 Request ID 교체.
+ * 안전한 수신값 보존, 길이 초과 시 접두어 유지, 잘못된 값의 신규 발급.
  */
 @Component
 public class RequestIdWebFilter implements WebFilter, Ordered {
