@@ -1,7 +1,13 @@
 server:
   port: ${SERVER_PORT}
+  # 배포 관리 경계에서 실제 연결 주소 사용, 전달 Header에 의한 주소 변환 제외
+  forward-headers-strategy: none
+  shutdown: graceful
 
 spring:
+  lifecycle:
+    # 진행 중 요청의 종료 대기 상한, Docker 종료 대기는 이보다 길게 설정
+    timeout-per-shutdown-phase: 30s
   reactor:
     context-propagation: auto
   application:
@@ -132,12 +138,16 @@ eureka:
   client:
     register-with-eureka: true
     fetch-registry: true
+    registry-fetch-interval-seconds: 5
     healthcheck:
       enabled: true
     serviceUrl:
       defaultZone: ${EUREKA_URL}
 
   instance:
+    # 같은 슬롯의 재기동과 이전 등록 구분, 초기화 완료 전 UP 등록 방지
+    instance-id: ${spring.application.name}:${random.uuid}
+    initial-status: STARTING
     prefer-ip-address: true
 
 management:
@@ -179,8 +189,12 @@ management:
           - health
           - prometheus
           - info
+          - registry
+          - serviceregistry
   endpoint:
     health:
+      probes:
+        enabled: true
       show-details: never
 
 logging:
