@@ -72,6 +72,9 @@ class GatewayErrorEventLoggerTest {
         then(errorEvent.getLevel()).isEqualTo(Level.ERROR);
         then(errorEvent.getFormattedMessage()).doesNotContain("private-detail");
         then(errorEvent.getThrowableProxy()).isNull();
+        then((String) fields(errorEvent).get("error.stack_trace"))
+                .contains("GatewayErrorEventLoggerTest.recordsSafeErrorAndLinkedDiagnosticOnce(")
+                .doesNotContain("private-detail", "second-line", "quoted");
         then(fields(errorEvent))
                 .containsEntry("event.dataset", "gateway-service.error")
                 .containsEntry("event.action", "http.server.request.failed")

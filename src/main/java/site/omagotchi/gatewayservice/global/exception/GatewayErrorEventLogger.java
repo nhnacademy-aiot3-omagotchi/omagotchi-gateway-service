@@ -8,6 +8,7 @@ import org.springframework.cloud.gateway.route.Route;
 import org.springframework.http.server.reactive.observation.ServerRequestObservationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+import site.omagotchi.gatewayservice.global.logging.ErrorStackTrace;
 import site.omagotchi.gatewayservice.global.requestid.RequestId;
 
 import java.util.UUID;
@@ -51,6 +52,7 @@ public class GatewayErrorEventLogger {
                 .addKeyValue("event.outcome", "failure")
                 .addKeyValue("error.code", errorCode.code())
                 .addKeyValue("error.type", failure.getClass().getName())
+                .addKeyValue("error.stack_trace", ErrorStackTrace.format(failure))
                 .addKeyValue("http.request.id", requestId.value())
                 .addKeyValue("http.request.method", exchange.getRequest().getMethod().name())
                 .addKeyValue("http.response.status_code", responseStatusCode);
